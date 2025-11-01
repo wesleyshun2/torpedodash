@@ -1,74 +1,135 @@
-# React Router Netlify Template
-
-A modern, production-ready template for building full-stack React applications using React Router,
-deployed to Netlify.
-
-## Features
-
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-- 💻 Configured for deployment to Netlify
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
-
-```bash
-npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
-
-```bash
-npm run build
-```
-
-## Previewing a Production build
-
-To preview a production build locally, use the [Netlify CLI](https://cli.netlify.com):
-
-```bash
-npx netlify-cli serve
-```
-
-```bash
-npm run build
-```
-
-## Deployment
-
-This template is preconfigured for deployment to Netlify.
-
-Follow <https://docs.netlify.com/welcome/add-new-site/> to add this project as a site
-in your Netlify account.
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
-## See also
-
-[Guide: how to deploy a React Router 7 site to Netlify](https://developers.netlify.com/guides/how-to-deploy-a-react-router-7-site-to-netlify/)
+---
+title: Torpedo_Dash_運作說明
 
 ---
 
-Built with ❤️ using React Router.
+# Torpedo Dash
+Torpedo Dash -- **將交易紀錄加密保存的合規版 Tornado cash**
+
+## 主題：
+
+公鏈發行 RWA 的隱私交易：將 RWA 發行至公鏈上，能讓傳統金融商品有更多機會實現跨國交易，增加商品的流動性，甚至是應用在像是抵押、借貸等等，增加資產的流動性、提升資金使用效率。然而，使用公鏈紀錄交易雖然公開透明且匿名，但外部有心人仍可能透過其他管道比對，反推錢包背後的真實身份，潛藏交易隱私被揭露風險。例如，若一筆大額轉移總是出現在同一時間，或與特定合約互動，就可能推測出背後機構。所以我們現在面臨的挑戰是 —— 對監理單位、投資人、審計方如何在保持交易透明與可驗證，同時，對市場上的其他參與者或競爭者其交易資訊能夠被適度保護。
+
+
+## 運作原理
+
+**類似 Tornado cash 的運作方式**
+- 合約及控制地址作為收放款中間人，模糊交易雙方身分
+- 遵循 ERC-3643 標準，以 ONCHINID 及 Self 作為交易雙方的身分驗證服務
+- 交易明細加密後寫入 NFT 的 metadata 方式提供交易雙方和監管用地址
+- 其他鏈的交易也可以記錄在以太坊上
+
+
+## 演示構建要點
+
+- 智能合約部屬在以太坊測試網
+- 收發雙方的加解密使用 MetaMask 小狐狸功能，在前端由dApp實現
+- 監管地址的交易紀錄 NFT 使用 Shamir 方法產生加密金鑰，需要3個片段中的2個才能解密
+- 監管地址的加解密使用 Oasis 的 ROFL 服務並保存一份密鑰片段，其他片段則使用 AWS 的服務座儲存及調用
+
+## 執行步驟
+
+1. 透過前端操作輸入需求
+`發款方、發出資產、發出TxID、收款方、有效期限、其他備註`
+
+2. ERC-3643：先對發款方做合規審查
+
+3. 合約發起交易給發款方簽署並提供加密用**公鑰**
+
+4. 發款方把資產先轉移至合約，mint 收據 NFT (交易類型可變更)
+```
+收據紀錄加密後的：操作指令、時間、其他資料
+```
+
+5. (可選) 資產多次轉移至項目控制下的中間地址
+
+6. 若過期拒絕交易，退回資產
+
+7. 收款方通過合規審查後，簽署收取資產並提供**公鑰**
+```
+檢查: 收款資格、時限
+加密使用密鑰：錢包公鑰/隨機生成/自行輸入
+```
+
+8. 資產從合約/中間地址發送至收款方
+
+9. 交易完成後，mint 出加密的交易紀錄 NFT 給收款方及監管地址
+```
+交易紀錄內容：發款方、發出資產、發出TxID、收款方、接收TxID、交易費用、其他備註
+加密使用密鑰：錢包公鑰/隨機生成/交易雙方自行輸入
+```
+
+10. 通知發款方 mint 交易紀錄，發款方需再次提交加密用**公鑰**
+
+11. 交易記錄解密
+- 發款方、收款方、監管地址各自負責
+- 用戶可使用多簽錢包降低風險
+- 本服務不保管任何外部私鑰
+
+# Torpedo Dash 技術架構說明文件
+
+## 一、系統總覽
+
+**Torpedo Dash** 是一套專為 RWA（Real World Asset）設計的 **合規隱私交易協議**。  
+它結合 **ERC-3643 標準、OnchainID 身份驗證、加密 NFT 紀錄** 及 **監管節點授權解密機制**，  
+實現「透明可驗證」與「交易隱私保護」兼容的區塊鏈交易模式。
+
+---
+
+## 二、系統組成與角色
+
+| 角色 | 職能描述 |
+|------|-----------|
+| **發款方 (Sender)** | 提出交易請求，通過合規審查後將資產轉入合約。 |
+| **收款方 (Receiver)** | 通過合規審查後接收資產。 |
+| **智能合約 (Controller Contract)** | 使用多個中介地址，負責鎖定、釋出資產與 mint NFT。 |
+| **監管地址 (Regulator address)** | 具解密權限，可查驗交易真實內容。 |
+| **身份驗證服務 (OnchainID / Self)** | 確保雙方皆為合格實體（KYC / AML）。 |
+
+---
+
+## 三、技術架構層次
+
+### 區塊鏈層
+- **主鏈選擇**：Ethereum（測試網使用 Sepolia）
+- **合約標準**：ERC-3643（合規 RWA token）
+- **交易紀錄儲存方式**：**交易紀錄密文直接寫入 NFT metadata，完整 on-chain 儲存**
+
+### 智能合約層
+**主要合約邏輯：**
+```
+1. 發款方提交交易需求 → ERC-3643 驗證合規
+2. Controller 合約鎖定資產 → mint 收據 NFT
+3. 收款方簽署接收 → Controller 釋出資產
+4. mint 交易紀錄 NFT 給收款方與監管節點
+```
+
+---
+
+### 加密與安全層
+
+#### (1) 加密機制
+- 由錢包產生公鑰：eth_getEncryptionPublicKey 
+- 加密資料直接寫入 NFT metadata：
+
+#### (2) 密鑰分割與儲存
+- 三方皆可各自彈性選擇多簽錢包等方案
+
+---
+
+### 前端與互動層
+
+| 元件 | 技術 |
+|------|------|
+| dApp 前端 | React + Ethers.js |
+| 錢包互動 | MetaMask（簽章、加解密） |
+| UI 功能 | 表單輸入 → 審查 → mint NFT|
+
+**互動流程：**
+1. 用戶在前端輸入交易參數  
+2. MetaMask 簽章交易並發送至 Controller 合約  
+3. 合約進行和規審查
+4. 交易完成後請求公鑰加密交易紀錄並Mint NFT  
+5. 需要時使用私鑰解密 NFT 的密文  
+
+---
