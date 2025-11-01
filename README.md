@@ -1,6 +1,6 @@
 
 # Torpedo Dash
-Torpedo Dash -- **將交易紀錄加密保存的合規版 Tornado cash**
+**將交易紀錄加密保存的合規版 Tornado cash**
 
 ## 主題：
 
