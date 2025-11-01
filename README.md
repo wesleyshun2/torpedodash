@@ -1,7 +1,3 @@
----
-title: Torpedo_Dash_運作說明
-
----
 
 # Torpedo Dash
 Torpedo Dash -- **將交易紀錄加密保存的合規版 Tornado cash**
